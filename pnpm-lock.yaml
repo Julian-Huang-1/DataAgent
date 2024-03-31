@@ -14,6 +14,9 @@ importers:
 
   apps/ex-app:
     dependencies:
+      '@DataAgent/ui':
+        specifier: workspace:^
+        version: link:../../packages/ui
       '@DataAgent/utils':
         specifier: workspace:^
         version: link:../../packages/utils
