@@ -4,7 +4,8 @@ const InputContainer = styled.div`
   width: 100%;
   display: flex;
   align-items: center;
-  background: transparent;
+  border: 1px solid #f7f7f7;
+  background-color: #f7f7f7;
   border-radius: 24px;
   padding-left: 50px;
   position: relative;
@@ -26,6 +27,7 @@ const StyledInput = styled.textarea`
   margin-left: 20px;
   &::placeholder {
     color: ${({ theme }) => theme.gray3};
+
     font-size: medium;
   }
   //设置滚动条样式

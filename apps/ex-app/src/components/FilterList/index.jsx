@@ -17,7 +17,7 @@ function FilterList({
   return (
     <StyledFilterList {...rest}>
       <Input.Search />
-      <Filter style={{ padding: "20px 10px" }}>
+      <Filter style={{ padding: "20px" }}>
         {options && (
           <Filter.FilterText label={filterLabel}>
             <Select>

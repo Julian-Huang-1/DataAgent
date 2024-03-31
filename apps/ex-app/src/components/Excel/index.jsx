@@ -1,16 +1,21 @@
-import PropTypes from "prop-types";
-import StyledExcel from "./style";
+import React from "react";
+import { DataGrid } from "@mui/x-data-grid";
+const rows = [
+  { id: 1, col1: "Hello", col2: "World" },
+  { id: 2, col1: "DataGridPro", col2: "is Awesome" },
+  { id: 3, col1: "MUI", col2: "is Amazing" },
+];
 
-function Excel({ children, ...rest }) {
+const columns = [
+  { field: "col1", headerName: "Column 1", width: 150 },
+  { field: "col2", headerName: "Column 2", width: 150 },
+];
+
+export default function Excel() {
   return (
-    <StyledExcel {...rest}>
-      <div style={{ height: 300, width: "100%" }}>hha</div>
-    </StyledExcel>
+    <div style={{ height: 300, width: "100%" }}>
+      {/* <DataGrid rows={rows} columns={columns} /> */}
+      haha
+    </div>
   );
 }
-
-Excel.propTypes = {
-  children: PropTypes.any,
-};
-
-export default Excel;

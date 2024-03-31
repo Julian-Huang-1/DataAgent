@@ -11,7 +11,7 @@ import EditProfile from "../EditProfile";
 import VideoCall from "../VideoCall";
 import { SettingPage } from "../Settings";
 import BlockedList from "../BlockedList";
-import { Routes, Route, useLocation } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import { useState } from "react";
 import Excel from "../Excel";
 function ChatApp({ children, ...rest }) {

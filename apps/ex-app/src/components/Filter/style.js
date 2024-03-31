@@ -4,7 +4,7 @@ const StyledFilter = styled.div`
   display: grid;
   grid-template-columns: 2fr 1fr;
   align-items: center;
-  padding: 21px 9px;
+  /* padding: 21px 5px; */
 `;
 const Filters = styled.div`
   ${StyledText} {
