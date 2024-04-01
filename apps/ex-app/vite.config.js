@@ -9,7 +9,6 @@ export default defineConfig({
     alias: {
       // eslint-disable-next-line no-undef
       "@": join(__dirname, "./src/"),
-      "@mui/styled-engine": "@mui/styled-engine-sc",
     },
   },
 });
