@@ -23,7 +23,7 @@ const StyledFooter = styled.div`
   width: 100%;
   padding: 15px 0;
   border: 1px solid ${({ theme }) => theme.gray2};
-  background: ${({ theme }) => theme.gray2};
+  background-color: #f7f7f7;
   border-radius: 50px;
   ${StyledInput} {
     &::placeholder {
