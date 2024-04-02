@@ -3,3 +3,4 @@ node_modules
 serve/fast-api/__pycache__
 serve/fast-api/.env
 serve/fast-api/file
+node_modules
