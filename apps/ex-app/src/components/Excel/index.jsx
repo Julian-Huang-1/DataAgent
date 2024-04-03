@@ -5,7 +5,7 @@ import {
   GridToolbar,
   useGridApiRef,
   useKeepGroupedColumnsHidden,
-} from '@mui/x-data-grid-premium';
+} from '@qvztest/xdgpre';
 import { useDemoData } from '@mui/x-data-grid-generator';
 
 export default function DataGridPremiumDemo() {
