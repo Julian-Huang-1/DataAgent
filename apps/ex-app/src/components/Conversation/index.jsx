@@ -9,6 +9,7 @@ import face from "@/assets/images/face-male-1.jpg";
 import useStore from "@/store/store";
 import formatTime from "@/utils/tools";
 import MarkdownRenderer from "@/MarkDownCom/Markdown";
+import Upload from "../Upload";
 const markdownText = `
 # Markdown示例
 
@@ -47,7 +48,13 @@ function Conversation({ children, onAvatarClick, onVideoClicked, ...rest }) {
         >
           {messageObj.role === "user" ? (
             <MyChatBubble time={formatTime(Date.now())} key={i}>
-              {messageObj.content}
+              {/* {messageObj.content} */}
+              <Upload
+                fileName="text.xlsx"
+                fileType="表格"
+                fileSize={14}
+                type="mine"
+              />
             </MyChatBubble>
           ) : (
             <ChatBubble time={formatTime(Date.now())} key={i}>

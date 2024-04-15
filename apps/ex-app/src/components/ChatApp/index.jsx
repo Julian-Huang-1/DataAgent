@@ -1,5 +1,11 @@
 import PropTypes from "prop-types";
-import StyledChatApp, { Nav, SideBar, Content, Drawer } from "./style";
+import StyledChatApp, {
+  Nav,
+  SideBar,
+  MinixIcon,
+  Content,
+  Drawer,
+} from "./style";
 import NavBar from "../NavBar";
 import MessageList from "../MessageList";
 import Conversation from "../Conversation";
@@ -11,18 +17,29 @@ import EditProfile from "../EditProfile";
 import VideoCall from "../VideoCall";
 import { SettingPage } from "../Settings";
 import BlockedList from "../BlockedList";
+import Icon from "../Icon";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faCompress } from "@fortawesome/free-solid-svg-icons";
 import { Routes, Route } from "react-router-dom";
 import { useState } from "react";
 import Excel from "../Excel";
 function ChatApp({ children, ...rest }) {
   const [showDrawer, setShowDrawer] = useState(false);
+  const [showSideBar, setShowSideBar] = useState(true);
   const [videoCalling, setVideoCalling] = useState(false);
+  const hanldeSiderShow = () => {
+    console.log("我被点击了");
+    setShowSideBar(!showSideBar);
+  };
   return (
     <StyledChatApp {...rest}>
       <Nav>
         <NavBar />
       </Nav>
-      <SideBar>
+      <SideBar showSideBar={!showSideBar}>
+        <MinixIcon onClick={hanldeSiderShow}>
+          <FontAwesomeIcon icon={faCompress} size="2x" />
+        </MinixIcon>
         <Routes>
           <Route path="/" element={<MessageList />}></Route>
           <Route path="/contacts" element={<ContactCardList />} />

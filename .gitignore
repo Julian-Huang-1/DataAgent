@@ -3,4 +3,7 @@ node_modules
 serve/fast-api/__pycache__
 serve/fast-api/.env
 serve/fast-api/file
+serve/fast-api/**/token.json
+serve/fast-api/**/credentials-web3.json
+
 node_modules

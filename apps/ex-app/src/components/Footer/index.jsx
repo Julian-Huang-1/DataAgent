@@ -38,6 +38,8 @@ function Footer({ children, ...rest }) {
     formData.append("file", fileObj);
   }
   console.log("formData---", formData.get("file"));
+  console.log("excelData--", excelData);
+  // 将数据转换为对象数组
   //发送请求
   const sendMessage = async () => {
     if (message.trim() === "" && excelData.length === 0) {

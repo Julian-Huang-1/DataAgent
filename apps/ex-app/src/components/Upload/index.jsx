@@ -15,6 +15,7 @@ import { useRef } from "react";
 function Upload({
   children,
   fileName,
+  type,
   fileSize,
   fileType,
   handleFileState,
@@ -28,7 +29,7 @@ function Upload({
   return (
     <StyledUpload {...rest}>
       <FileContainer ref={fileRef}>
-        <FileIcon icon={FileExcel} width={38} height={30} />
+        <FileIcon icon={FileExcel} width={38} height={30} type={type} />
         <FileName>{fileName}</FileName>
         <TypeAndSizeContainer>
           <FileType>{fileType}</FileType>

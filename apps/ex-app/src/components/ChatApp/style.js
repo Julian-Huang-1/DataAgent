@@ -11,25 +11,43 @@ const Nav = styled.nav`
   position: relative;
   z-index: 100;
 `;
-const SideBar = styled.aside`
-  box-sizing: border-box;
-  max-width: 448px;
-  min-width: 344px;
-  height: 100vh;
-  flex: 1;
-  background: ${({ theme }) => theme.grediantGray};
+const sideBarVariant = {
+  false: css`
+    width: 0;
+    display: none;
+    transition: width 0.3s ease;
+  `,
+  true: css`
+    box-sizing: border-box;
+    max-width: 448px;
+    min-width: 344px;
+    height: 100vh;
+    flex: 1;
+    background: ${({ theme }) => theme.grediantGray};
+  `,
+};
 
+const SideBar = styled.aside`
+  /* padding-top: 20px; */
   position: relative;
   z-index: 50;
-
+  ${({ showSideBar }) => sideBarVariant[showSideBar]}
   & > div {
     will-change: transform, opacity;
     position: absolute;
     width: 100%;
   }
 `;
+const MinixIcon = styled.span`
+  /* display: inline-block; */
+  position: absolute;
+  top: 0;
+  right: 10px;
+`;
 const Content = styled.main`
-  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
   flex: 2;
   position: relative;
 `;
@@ -48,4 +66,4 @@ const Drawer = styled.div`
     `}
 `;
 export default StyledChatApp;
-export { Nav, SideBar, Content, Drawer };
+export { Nav, SideBar, Content, Drawer, MinixIcon };

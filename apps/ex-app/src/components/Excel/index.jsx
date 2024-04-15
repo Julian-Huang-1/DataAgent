@@ -1,96 +1,56 @@
-import * as React from 'react';
-import Box from '@mui/material/Box';
-import {
-  DataGridPremium,
-  GridToolbar,
-  useGridApiRef,
-  useKeepGroupedColumnsHidden,
-} from '@qvztest/xdgpre';
-import { useDemoData } from '@mui/x-data-grid-generator';
+import * as React from "react";
+import StyledExcel from "./style";
+import { DataGridPremium, GridToolbar } from "@mui/x-data-grid-premium";
+import ErrorBoundary from "../ErrorBoundary";
+import useStore from "@/store/store";
+import { useEffect, useState } from "react";
+
+function useData(rowLength, columnLength) {
+  const messages = useStore((state) => state.messages);
+  const [data, setData] = useState({ columns: [], rows: [] });
+  useEffect(() => {
+    const excelStrData = messages[messages.length - 1]?.content;
+    const excelData = JSON.parse(excelStrData);
+    console.log("excel组件", excelData);
+    // 获取列名
+    const columns = excelData[0];
+    const colData = columns.map((data) => {
+      return {
+        field: data,
+        headerName: data,
+        width: 150,
+      };
+    });
+    // 将数据转换为对象数组
+    const formattedData = excelData.slice(1).map((row, rowId) => {
+      const rowData = {};
+      columns.forEach((column, index) => {
+        rowData["id"] = rowId;
+        rowData[column] = row[index];
+      });
+      return rowData;
+    });
+
+    setData({
+      rows: formattedData,
+      columns: colData,
+    });
+  }, [rowLength, columnLength]);
+  return data;
+}
 
 export default function DataGridPremiumDemo() {
-  const { data, loading } = useDemoData({
-    dataSet: 'Commodity',
-    rowLength: 100,
-    editable: true,
-    visibleFields: [
-      'commodity',
-      'quantity',
-      'filledQuantity',
-      'status',
-      'isFilled',
-      'unitPrice',
-      'unitPriceCurrency',
-      'subTotal',
-      'feeRate',
-      'feeAmount',
-      'incoTerm',
-    ],
-  });
-  const apiRef = useGridApiRef();
-
-  const initialState = useKeepGroupedColumnsHidden({
-    apiRef,
-    initialState: {
-      ...data.initialState,
-      rowGrouping: {
-        ...data.initialState?.rowGrouping,
-        model: ['commodity'],
-      },
-      sorting: {
-        sortModel: [{ field: '__row_group_by_columns_group__', sort: 'asc' }],
-      },
-      aggregation: {
-        model: {
-          quantity: 'sum',
-        },
-      },
-    },
-  });
-
+  const data = useData(100, 1000);
   return (
-    <Box sx={{ height: 520, width: '100%' }}>
-      <DataGridPremium
-        {...data}
-        apiRef={apiRef}
-        loading={loading}
-        disableRowSelectionOnClick
-        initialState={initialState}
-        slots={{ toolbar: GridToolbar }}
-      />
-    </Box>
+    <ErrorBoundary>
+      {" "}
+      <StyledExcel>
+        <DataGridPremium
+          {...data}
+          slots={{ toolbar: GridToolbar }}
+          columnBufferPx={100}
+        />
+      </StyledExcel>
+    </ErrorBoundary>
   );
 }
-
-
-import { useState, useEffect } from 'react';
-
-function ErrorBoundary({ children }) {
-  const [hasError, setHasError] = useState(false);
-
-  useEffect(() => {
-    const errorHandler = (error, errorInfo) => {
-      // 可以在这里记录错误信息到日志服务
-      console.error('Error caught by ErrorBoundary:', error, errorInfo);
-      setHasError(true);
-    };
-
-    // 组件挂载时设置错误处理函数
-    window.addEventListener('error', errorHandler);
-
-    // 组件卸载时移除错误处理函数
-    return () => {
-      window.removeEventListener('error', errorHandler);
-    };
-  }, []);
-
-  if (hasError) {
-    // 当错误发生时显示备用 UI
-    return <div>Oops! Something went wrong.</div>;
-  }
-
-  // 正常情况下渲染子组件
-  return children;
-}
-
-

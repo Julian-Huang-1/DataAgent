@@ -22,11 +22,12 @@ def getResponse(messages):
 
 
 
+
 # 调用getResponse函数获取响应
-# completion = getResponse( { "role": "user", "content": "编写一个冒泡排序" })
+completion = getResponse([{ "role": "user", "content": "你是谁？" }])
 # print(completion.choices[0])
 # for chunk in completion:
 #   print(chunk.choices[0].delta)
 
 # # 处理响应
-# print(completion.choices[0].message.content)
+print(type (completion))

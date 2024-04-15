@@ -22,6 +22,10 @@ const TypeAndSizeContainer = styled.div`
 `;
 const FileIcon = styled(Icon)`
   grid-area: file;
+  svg,
+  svg * {
+    ${({ type }) => (type === "mine" ? `fill:#000066` : "")};
+  }
 `;
 const FileType = styled(Text).attrs({ type: "secondary", size: "small" })`
   margin-right: 5px;

@@ -1,18 +1,14 @@
 import os
-import openai
 import copy
 import glob
 import shutil
-openai.api_key = os.getenv("OPENAI_API_KEY")
 from IPython.display import display, Code, Markdown
 import matplotlib.pyplot as plt
 import seaborn as sns
 import time
 import tiktoken
-
 import numpy as np
 import pandas as pd
-
 import json
 import io
 import inspect
@@ -24,7 +20,10 @@ import base64
 import pymysql
 import os.path
 import matplotlib
-
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
+import markdown
 from googleapiclient.errors import HttpError
 from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials
@@ -35,23 +34,33 @@ import email
 from email import policy
 from email.parser import BytesParser
 from email.mime.text import MIMEText
-from openai.error import APIConnectionError
-
+# from openai.error import APIConnectionError
 from bs4 import BeautifulSoup
 import dateutil.parser as parser
-
 import sys
 from gptLearning import *
 os.environ['SSL_VERSION'] = 'TLSv1_2'
-
 import warnings
 warnings.filterwarnings("ignore")
-
 from pydrive.auth import GoogleAuth
 from pydrive.drive import GoogleDrive
 from io import BytesIO
+import dotenv
+import openai
+from openai import OpenAI 
 
+# 加载环境变量
+dotenv.load_dotenv()
 
+# 实例化OpenAI客户端
+client = OpenAI(
+    api_key=os.getenv("OPENAI_API_KEY"))
+
+"""
+Memory模块
+1.本地存储
+2.谷歌云文档
+"""
 def create_or_get_folder(folder_name, upload_to_google_drive=False):
     """
     创建或获取文件夹ID，本地存储时获取文件夹路径
@@ -297,7 +306,11 @@ def delete_all_files_in_folder(folder_id, upload_to_google_drive=False):
                     shutil.rmtree(file_path)
             except Exception as e:
                 print(f'Failed to delete {file_path}. Reason: {e}')
-                
+
+"""
+InterProject类，项目的存储地方
+"""            
+# 本地存储测试           
 class InterProject():
     """
     项目类：项目是每个分析任务的基础对象，换而言之，每个分析任务应该都是“挂靠”在某个项目中。\
@@ -398,7 +411,11 @@ class InterProject():
                                              doc_id=self.doc_id, 
                                              new_name=new_name, 
                                              upload_to_google_drive = self.upload_to_google_drive)
-        
+
+
+"""
+ChatMessage类，存储聊天信息  短期记忆
+"""       
 class ChatMessages():
     """
     ChatMessages类，用于创建Chat模型能够接收和解读的messages对象。该对象是原始Chat模型接收的\
@@ -527,7 +544,7 @@ class ChatMessages():
     def messages_append(self, new_messages):
         
         # 若是单独一个字典，或JSON格式字典
-        if type(new_messages) is dict or type(new_messages) is openai.openai_object.OpenAIObject:
+        if type(new_messages) is dict or type(new_messages) is openai.types.chat.chat_completion.ChatCompletion:
             self.messages.append(new_messages)
             self.tokens_count += len(self.encoding.encode(str(new_messages)))
             
@@ -607,7 +624,11 @@ class ChatMessages():
             message = history_messages[index]
             if message.get("function_call") or message.get("role") == "function":
                 self.messages_pop(manual=True, index=index)
-                
+
+
+"""
+Tool类
+"""    
 def sql_inter(sql_query, g='globals()'):
     """
     用于执行一段SQL代码，并最终获取SQL代码执行结果，\
@@ -701,7 +722,7 @@ def python_inter(py_code, g='globals()'):
             # 若不是重复赋值，则报错
             return f"代码执行时报错{e}"
         
-def upload_image_to_drive(figure, folder_id = '1YstWRU-78JwTEQQA3vJokK3OF_F0djRH'):
+def upload_image_to_drive(figure, folder_id = '1hioqrE-tft2Ci0kWz5TcuszOtCB7MJub'):
     """
     将指定的fig对象上传至谷歌云盘
     """
@@ -727,6 +748,7 @@ def upload_image_to_drive(figure, folder_id = '1YstWRU-78JwTEQQA3vJokK3OF_F0djRH
     
     return image_file["webContentLink"]
 
+#工具函数5：用于执行一段包含可视化绘图的Python代码，并最终获取一个图片类型对象
 def fig_inter(py_code, fname, g='globals()'):
     """
     用于执行一段包含可视化绘图的Python代码，并最终获取一个图片类型对象
@@ -737,23 +759,19 @@ def fig_inter(py_code, fname, g='globals()'):
     """    
     # 保存当前的后端
     current_backend = matplotlib.get_backend()
-    
     # 设置为Agg后端
     matplotlib.use('Agg')
-    import matplotlib.pyplot as plt
-    import pandas as pd
-    import seaborn as sns
-
     # 创建一个字典，用于存储本地变量
     local_vars = {"plt": plt, "pd": pd, "sns": sns}
     
     try:
-        exec(py_code, g, local_vars)       
+        exec(py_code, g, local_vars)   #当全局变量与局部变量名冲突时，优先使用局部变量   
     except Exception as e:
         return f"代码执行时报错{e}"
     
     # 回复默认后端
-    matplotlib.use(current_backend)
+    finally: 
+        matplotlib.use(current_backend)
     
     # 根据图片名称，获取图片对象
     fig = local_vars[fname]
@@ -768,7 +786,7 @@ def fig_inter(py_code, fname, g='globals()'):
         
     print(res)
     return res
-
+#Chat模型的functions参数编写函数
 def auto_functions(functions_list):
     """
     Chat模型的functions参数编写函数
@@ -777,7 +795,38 @@ def auto_functions(functions_list):
     """
     def functions_generate(functions_list):
         # 创建空列表，用于保存每个函数的描述字典
-        functions = []
+        # functions = []
+        functions=[{'name': 'sql_inter',
+  'description': '用于执行一段SQL代码，并最终获取SQL代码执行结果，核心功能是将输入的SQL代码传输至MySQL环境中进行运行，并最终返回SQL代码运行结果。',
+  'parameters': {'type': 'object',
+   'properties': {'sql_query': {'type': 'string',
+     'description': '字符串形式的SQL代码，可以在MySQL中运行，并获取运行结果'},
+    'g': {'type': 'string', 'description': '表示环境变量，无需设置，保持默认参数即可'}},
+   'required': ['sql_query']}},
+ {'name': 'extract_data',
+  'description': '借助pymysql将MySQL中的某张表读取并保存到本地Python环境中',
+  'parameters': {'type': 'object',
+   'properties': {'sql_query': {'type': 'string',
+     'description': '字符串形式的SQL查询语句，用于提取MySQL中的某张表。'},
+    'df_name': {'type': 'string',
+     'description': '将MySQL数据库中提取的表格进行本地保存时的变量名，以字符串形式表示。'},
+    'g': {'type': 'string', 'description': '字符串形式变量，表示环境变量，无需设置，保持默认参数即可'}},
+   'required': ['sql_query', 'df_name']}},
+ {'name': 'python_inter',
+  'description': '专门用于执行非绘图的python代码，并获取最终查询或处理结果。若是需要执行绘图操作的Python代码，请勿调用python_inter函数，而请直接调用fig_inter函数来完成任务。',
+  'parameters': {'type': 'object',
+   'properties': {'py_code': {'type': 'string',
+     'description': '用于执行对telco_db数据库中各张数据表进行操作的python代码'},
+    'g': {'type': 'string', 'description': '环境变量，可选参数，保持默认参数即可'}},
+   'required': ['py_code']}},
+ {'name': 'fig_inter',
+  'description': '用于执行一段包含可视化绘图的Python代码，并最终获取一个图片类型对象',
+  'parameters': {'type': 'object',
+   'properties': {'py_code': {'type': 'string',
+     'description': '代码中必须包含Figure对象创建过程'},
+    'fname': {'type': 'string', 'description': '代码中创建的Figure变量名'},
+    'g': {'type': 'string', 'description': '环境变量，无需设置，保持默认参数即可'}},
+   'required': ['py_code', 'fname']}}]
         
         def chen_ming_algorithm(data):
             """
@@ -826,14 +875,18 @@ def auto_functions(functions_list):
             user_prompt = '现在有另一个函数，函数名为：%s；函数说明为：%s；\
                           请帮我仿造类似的格式为当前函数创建一个function对象。' % (function_name, function_description)
 
-            response = openai.ChatCompletion.create(
-                              model="gpt-4-0613",
-                              messages=[
-                                {"role": "user", "name":"example_user", "content": user_message1},
-                                {"role": "assistant", "name":"example_assistant", "content": assistant_message1},
-                                {"role": "user", "name":"example_user", "content": user_prompt}]
-                            )
-            functions.append(json.loads(response.choices[0].message['content']))
+            # response =client.chat.completions.create(
+            #                   model="gpt-4-0613",
+            #                   messages=[
+            #                     {"role": "user", "name":"example_user", "content": user_message1},
+            #                     {"role": "assistant", "name":"example_assistant", "content": assistant_message1},
+            #                     {"role": "user", "name":"example_user", "content": user_prompt}]
+            #                 )
+            
+            # functions.append(json.loads(response.choices[0].message.content))
+          
+
+            # functions.append(abc)
         return functions
     
     max_attempts = 3
@@ -856,6 +909,7 @@ def auto_functions(functions_list):
                 print("正在重新运行...")
     return functions
 
+# 外部函数类，主要负责承接外部函数调用时相关功能支持
 class AvailableFunctions():
     """
     外部函数类，主要负责承接外部函数调用时相关功能支持。类属性包括外部函数列表、外部函数参数说明列表、以及调用方式说明三项。
@@ -883,7 +937,64 @@ class AvailableFunctions():
             self.functions.append(function_description)
         if function_call_update != None:
             self.function_call = function_call_update
-            
+# 测试开始
+# functions_list=[sql_inter,extract_data]
+# functions_dic = {func.__name__: func for func in functions_list}
+# print(functions_dic)
+af = AvailableFunctions(functions_list=[sql_inter, extract_data, python_inter, fig_inter])
+# print(af.functions_list)
+# print(af.functions)
+
+# print(af)
+# 测试通过
+
+"""
+Planning模块
+"""     
+
+#函数调用消息function_call_message，返回一条函数运行结果消息function_response_messages。
+def function_to_call(available_functions, function_call_message):
+    """
+    根据一条函数调用消息function_call_message，返回一条函数运行结果消息function_response_messages。
+    :param available_functions: 必要参数，要求输入一个AvailableFunctions对象，以说明当前外部函数基本情况
+    :param function_call_message: 必要参数，要求输入一条外部函数调用的message
+    :return: function_response_messages，输出又外部函数运行结果所组成的message
+    """
+    
+    # 获取调用外部函数的函数名称
+    function_name = function_call_message["function_call"]["name"]
+    
+    # 根据函数名称获取对应的外部函数对象
+    fuction_to_call = available_functions.functions_dic[function_name]
+    
+    # 提取function_call_message中调用外部函数的函数参数
+    # 即大模型编写的SQL或者Python代码
+    function_args = json.loads(function_call_message["function_call"]["arguments"])
+    
+    # 将参数带入到外部函数中并运行
+    try:
+        # 将当前操作空间中的全局变量添加到外部函数中,因为所有的外部函数都有一个参数加 g,通过给g赋值成globals()。可以在全局内访问到
+        function_args['g']=globals()
+        
+        # 运行外部函数
+        function_response = fuction_to_call(**function_args) # **语法可以将字典中的值一一赋值给形参
+      
+    # 若外部函数运行报错，则提取报错信息
+    except Exception as e:
+        function_response = "函数运行报错如下:" + str(e)
+        #print(function_response)
+        
+    # 创建function_response_messages
+    # 该message包含外部函数顺利运行或报错信息
+    
+    function_response_messages = {
+        "role": "function",
+        "name": function_name,
+        "content": function_response,
+    }
+    
+    return function_response_messages      
+
 def add_task_decomposition_prompt(messages):
     
     """
@@ -952,7 +1063,13 @@ def add_task_decomposition_prompt(messages):
     task_decomp_few_shot.messages_append(question_message)
     
     return task_decomp_few_shot
-
+# 数据字典文件
+with open('telco_data_dictionary.md', 'r', encoding='utf-8') as f:
+    data_dictionary = f.read()
+# 数据分析报告编写专家文档
+with open('DA instruct.md', 'r', encoding='utf-8') as f:
+    DA_instruct = f.read()
+msg1 = ChatMessages(system_content_list=[data_dictionary], question="请帮我简单介绍下telco_db数据库中的这四张表")
 def modify_prompt(messages, action='add', enable_md_output=True, enable_COT=True):
     """
     当开启开发者模式时，会让用户选择是否添加COT提示模板或其他提示模板，并创建一个经过修改的新的message。
@@ -1016,21 +1133,21 @@ def get_gpt_response(model,
         messages = modify_prompt(messages, action='add')
         
     # 如果是增强模式，则增加复杂任务拆解流程
-    # if is_enhanced_mode:
-        # messages = add_task_decomposition_prompt(messages)
+    if is_enhanced_mode:
+        messages = add_task_decomposition_prompt(messages)
 
     # 考虑到可能存在通信报错问题，因此循环调用Chat模型进行执行
     while True:
         try:
             # 若不存在外部函数
             if available_functions == None:
-                response = openai.ChatCompletion.create(
+                response = client.chat.completions.create(
                     model=model,
                     messages=messages.messages)   
                 
             # 若存在外部函数，此时functions和function_call参数信息都从AvailableFunctions对象中获取
             else:
-                response = openai.ChatCompletion.create(
+                response = client.chat.completions.create(
                     model=model,
                     messages=messages.messages, 
                     functions=available_functions.functions, 
@@ -1038,7 +1155,7 @@ def get_gpt_response(model,
                     )   
             break  # 如果成功获取响应，退出循环
             
-        except APIConnectionError as e:
+        except Exception as e:
             # APIConnectionError默认是用户需求不清导致无法返回结果
             # 若开启增强模式，此时提示用户重新输入需求
             if is_enhanced_mode:
@@ -1053,7 +1170,7 @@ def get_gpt_response(model,
                 try:
                     msg_temp.messages[-1]["content"] = new_prompt
                     # 修改用户问题并直接提问
-                    response = openai.ChatCompletion.create(
+                    response = client.chat.completions.create(
                         model=model,
                         messages=msg_temp.messages)
                     
@@ -1077,7 +1194,7 @@ def get_gpt_response(model,
                         
                         return response_message
                 # 若在提示用户修改原问题时遇到链接错误，则直接暂停1分钟后继续执行While循环
-                except APIConnectionError as e:
+                except Exception as e :
                     print(f"当前遇到了一个链接问题: {str(e)}")
                     print("由于Limit Rate限制，即将等待1分钟后继续运行...")
                     time.sleep(60)  # 等待1分钟
@@ -1111,104 +1228,34 @@ def get_gpt_response(model,
     if is_developer_mode:
         messages = modify_prompt(messages, action='remove')
         
-    return response["choices"][0]["message"]
+    return response.choices[0].message
+# 1.基本功能问答测试
+# msg1_response = get_gpt_response(model='gpt-3.5-turbo-1106', 
+#                                  messages=msg1, 
+#                                  available_functions=None,
+#                                  is_developer_mode=False,
+#                                  is_enhanced_mode=False)
+# print(msg1_response.content) 
 
-def get_chat_response(model, 
-                      messages, 
-                      available_functions=None,
-                      is_developer_mode=False,
-                      is_enhanced_mode=False, 
-                      delete_some_messages=False, 
-                      is_task_decomposition=False):
-    
-    """
-    负责完整执行一次对话的最高层函数，需要注意的是，一次对话中可能会多次调用大模型，而本函数则是完成一次对话的主函数。\
-    要求输入的messages中最后一条消息必须是能正常发起对话的消息。\
-    该函数通过调用get_gpt_response来获取模型输出结果，并且会根据返回结果的不同，例如是文本结果还是代码结果，\
-    灵活调用不同函数对模型输出结果进行后处理。\
-    :param model: 必要参数，表示调用的大模型名称
-    :param messages: 必要参数，ChatMessages类型对象，用于存储对话消息
-    :param available_functions: 可选参数，AvailableFunctions类型对象，用于表示开启对话时外部函数基本情况。\
-    默认为None，表示没有外部函数
-    :param is_developer_mode: 表示是否开启开发者模式，默认为False。\
-    开启开发者模式时，会自动添加提示词模板，并且会在每次执行代码前、以及返回结果之后询问用户意见，并会根据用户意见进行修改。
-    :param is_enhanced_mode: 可选参数，表示是否开启增强模式，默认为False。\
-    开启增强模式时，会自动启动复杂任务拆解流程，并且在进行代码debug时会自动执行deep debug。
-    :param delete_some_messages: 可选参数，表示在拼接messages时是否删除中间若干条消息，默认为Fasle。
-    :param is_task_decomposition: 可选参数，是否是当前执行任务是否是审查任务拆解结果，默认为False。
-    :return: 拼接本次问答最终结果的messages
-    """
-    
-    # 当且仅当围绕复杂任务拆解结果进行修改时，才会出现is_task_decomposition=True的情况
-    # 当is_task_decomposition=True时，不再重新创建response_message
-    if not is_task_decomposition:
-        # 先获取单次大模型调用结果
-        # 此时response_message是大模型调用返回的message
-        response_message = get_gpt_response(model=model, 
-                                            messages=messages, 
-                                            available_functions=available_functions,
-                                            is_developer_mode=is_developer_mode,
-                                            is_enhanced_mode=is_enhanced_mode)
-    
-    # 复杂条件判断，若is_task_decomposition = True，
-    # 或者是增强模式且是执行function response任务时
-    # （需要注意的是，当is_task_decomposition = True时，并不存在response_message对象）
-    if is_task_decomposition or (is_enhanced_mode and response_message.get("function_call")):
-        # 将is_task_decomposition修改为True，表示当前执行任务为复杂任务拆解
-        is_task_decomposition = True
-        # 在拆解任务时，将增加了任务拆解的few-shot-message命名为text_response_messages
-        task_decomp_few_shot = add_task_decomposition_prompt(messages)
-        # print("正在进行任务分解，请稍后...")
-        # 同时更新response_message，此时response_message就是任务拆解之后的response
-        response_message = get_gpt_response(model=model, 
-                                            messages=task_decomp_few_shot, 
-                                            available_functions=available_functions,
-                                            is_developer_mode=is_developer_mode,
-                                            is_enhanced_mode=is_enhanced_mode)
-        # 若拆分任务的提示无效，此时response_message有可能会再次创建一个function call message
-        if response_message.get("function_call"):
-            print("当前任务无需拆解，可以直接运行。")
+# 单次调用测试通过
 
-    # 若本次调用是由修改对话需求产生，则按照参数设置删除原始message中的若干条消息
-    # 需要注意的是，删除中间若干条消息，必须在创建完新的response_message之后再执行
-    if delete_some_messages:
-        for i in range(delete_some_messages):
-            messages.messages_pop(manual=True, index=-1)
-    
-    # 注意，执行到此处时，一定会有一个response_message
-    # 接下来分response_message不同类型，执行不同流程
-    # 若是文本响应类任务（包括普通文本响应和和复杂任务拆解审查两种情况，都可以使用相同代码）
-    if not response_message.get("function_call"):
-        # 将message保存为text_answer_message
-        text_answer_message = response_message 
-        # 并带入is_text_response_valid对文本内容进行审查
-        messages = is_text_response_valid(model=model, 
-                                          messages=messages, 
-                                          text_answer_message=text_answer_message,
-                                          available_functions=available_functions,
-                                          is_developer_mode=is_developer_mode,
-                                          is_enhanced_mode=is_enhanced_mode, 
-                                          delete_some_messages=delete_some_messages,
-                                          is_task_decomposition=is_task_decomposition)
-    
-    
-    
-    # 若是function response任务
-    elif response_message.get("function_call"):
-        # 创建调用外部函数的function_call_message
-        # 在当前Agent中，function_call_message是一个包含SQL代码或者Python代码的JSON对象
-        function_call_message = response_message 
-        # 将function_call_message带入代码审查和运行函数is_code_response_valid
-        # 并最终获得外部函数运行之后的问答结果
-        messages = is_code_response_valid(model=model, 
-                                          messages=messages, 
-                                          function_call_message=function_call_message,
-                                          available_functions=available_functions,
-                                          is_developer_mode=is_developer_mode,
-                                          is_enhanced_mode=is_enhanced_mode, 
-                                          delete_some_messages=delete_some_messages)
-    
-    return messages    
+# function call功能测试
+msg2 = ChatMessages(system_content_list=[data_dictionary], question="请帮我查看user_demographics数据表中总共有多少条数据。")
+msg2_response = get_gpt_response(model='gpt-3.5-turbo-1106', 
+                                 messages=msg2, 
+                                 available_functions=af,
+                                 is_developer_mode=False,
+                                 is_enhanced_mode=False)
+# print(msg2_response)
+# 增强模式下下用户意图探究能力测试
+# msg5 = ChatMessages(system_content_list=[data_dictionary], question="小明有一个装满各种水果的篮子。篮子里有5个苹果、3个橙子和2个香蕉。每个苹果的重量是150克，每个橙子的重量是120克，每个香蕉的重量是200克。请帮小明计算篮子里所有水果的总重量。")
+# msg5_response = get_gpt_response(model='gpt-3.5-turbo-1106', 
+#                                  messages=msg5, 
+#                                  available_functions=af,
+#                                  is_developer_mode=False,
+#                                  is_enhanced_mode=True)
+# print(msg5_response.content)
+# 测试通过
 
 # 判断代码输出结果是否符合要求，输入function call message，输出function response message
 def is_code_response_valid(model, 
@@ -1449,11 +1496,12 @@ def is_text_response_valid(model,
     """    
     
     # 从text_answer_message中获取模型回答结果并打印
-    answer_content = text_answer_message["content"]
+    answer_content = text_answer_message.content
     
     print("模型回答：\n")
-    display(Markdown(answer_content))
-    
+    # display(Markdown(answer_content))
+    plain_text = markdown.markdown(answer_content)
+    print(plain_text)
     # 创建指示变量user_input，用于记录用户修改意见，默认为None
     user_input = None
     
@@ -1536,6 +1584,112 @@ def is_text_response_valid(model,
         messages.messages_append(text_answer_message)
     
     return messages
+
+def get_chat_response(model, 
+                      messages, 
+                      available_functions=None,
+                      is_developer_mode=False,
+                      is_enhanced_mode=False, 
+                      delete_some_messages=False, 
+                      is_task_decomposition=False):
+    
+    """
+    负责完整执行一次对话的最高层函数，需要注意的是，一次对话中可能会多次调用大模型，而本函数则是完成一次对话的主函数。\
+    要求输入的messages中最后一条消息必须是能正常发起对话的消息。\
+    该函数通过调用get_gpt_response来获取模型输出结果，并且会根据返回结果的不同，例如是文本结果还是代码结果，\
+    灵活调用不同函数对模型输出结果进行后处理。\
+    :param model: 必要参数，表示调用的大模型名称
+    :param messages: 必要参数，ChatMessages类型对象，用于存储对话消息
+    :param available_functions: 可选参数，AvailableFunctions类型对象，用于表示开启对话时外部函数基本情况。\
+    默认为None，表示没有外部函数
+    :param is_developer_mode: 表示是否开启开发者模式，默认为False。\
+    开启开发者模式时，会自动添加提示词模板，并且会在每次执行代码前、以及返回结果之后询问用户意见，并会根据用户意见进行修改。
+    :param is_enhanced_mode: 可选参数，表示是否开启增强模式，默认为False。\
+    开启增强模式时，会自动启动复杂任务拆解流程，并且在进行代码debug时会自动执行deep debug。
+    :param delete_some_messages: 可选参数，表示在拼接messages时是否删除中间若干条消息，默认为Fasle。
+    :param is_task_decomposition: 可选参数，是否是当前执行任务是否是审查任务拆解结果，默认为False。
+    :return: 拼接本次问答最终结果的messages
+    """
+    
+    # 当且仅当围绕复杂任务拆解结果进行修改时，才会出现is_task_decomposition=True的情况
+    # 当is_task_decomposition=True时，不再重新创建response_message
+    if not is_task_decomposition:
+        # 先获取单次大模型调用结果
+        # 此时response_message是大模型调用返回的message
+        response_message = get_gpt_response(model=model, 
+                                            messages=messages, 
+                                            available_functions=available_functions,
+                                            is_developer_mode=is_developer_mode,
+                                            is_enhanced_mode=is_enhanced_mode)
+    
+    # 复杂条件判断，若is_task_decomposition = True，
+    # 或者是增强模式且是执行function response任务时
+    # （需要注意的是，当is_task_decomposition = True时，并不存在response_message对象）
+    if is_task_decomposition or (is_enhanced_mode and response_message.function_call):
+        # 将is_task_decomposition修改为True，表示当前执行任务为复杂任务拆解
+        is_task_decomposition = True
+        # 在拆解任务时，将增加了任务拆解的few-shot-message命名为text_response_messages
+        task_decomp_few_shot = add_task_decomposition_prompt(messages)
+        # print("正在进行任务分解，请稍后...")
+        # 同时更新response_message，此时response_message就是任务拆解之后的response
+        response_message = get_gpt_response(model=model, 
+                                            messages=task_decomp_few_shot, 
+                                            available_functions=available_functions,
+                                            is_developer_mode=is_developer_mode,
+                                            is_enhanced_mode=is_enhanced_mode)
+        # 若拆分任务的提示无效，此时response_message有可能会再次创建一个function call message
+        if response_message.function_call:
+            print("当前任务无需拆解，可以直接运行。")
+
+    # 若本次调用是由修改对话需求产生，则按照参数设置删除原始message中的若干条消息
+    # 需要注意的是，删除中间若干条消息，必须在创建完新的response_message之后再执行
+    if delete_some_messages:
+        for i in range(delete_some_messages):
+            messages.messages_pop(manual=True, index=-1)
+    
+    # 注意，执行到此处时，一定会有一个response_message
+    # 接下来分response_message不同类型，执行不同流程
+    # 若是文本响应类任务（包括普通文本响应和和复杂任务拆解审查两种情况，都可以使用相同代码）
+    if not response_message.function_call:
+        # 将message保存为text_answer_message
+        text_answer_message = response_message 
+        # 并带入is_text_response_valid对文本内容进行审查
+        messages = is_text_response_valid(model=model, 
+                                          messages=messages, 
+                                          text_answer_message=text_answer_message,
+                                          available_functions=available_functions,
+                                          is_developer_mode=is_developer_mode,
+                                          is_enhanced_mode=is_enhanced_mode, 
+                                          delete_some_messages=delete_some_messages,
+                                          is_task_decomposition=is_task_decomposition)
+    
+    
+    
+    # 若是function response任务
+    elif response_message.function_call:
+        # 创建调用外部函数的function_call_message
+        # 在当前Agent中，function_call_message是一个包含SQL代码或者Python代码的JSON对象
+        function_call_message = response_message 
+        # 将function_call_message带入代码审查和运行函数is_code_response_valid
+        # 并最终获得外部函数运行之后的问答结果
+        messages = is_code_response_valid(model=model, 
+                                          messages=messages, 
+                                          function_call_message=function_call_message,
+                                          available_functions=available_functions,
+                                          is_developer_mode=is_developer_mode,
+                                          is_enhanced_mode=is_enhanced_mode, 
+                                          delete_some_messages=delete_some_messages)
+    
+    return messages    
+
+# 开发者模式 --测试
+# msg2 = ChatMessages(system_content_list=[data_dictionary], question="请帮我简单介绍telco_db数据库基本情况。")
+# msg_response2 = get_chat_response(model='gpt-3.5-turbo-16k-0613', 
+#                                   messages=msg2, 
+#                                   is_developer_mode=True)
+# print(msg_response2.history_messages)
+
+# action模块
 
 class MateGen():
     def __init__(self, 
@@ -1634,3 +1788,12 @@ class MateGen():
             return None
         else:
             self.project.append_doc_content(content=self.messages.history_messages)
+# 开启连接数据库模式
+mategen_test = MateGen(api_key = os.getenv("OPENAI_API_KEY"),      # 设置api_key
+                       model = "gpt-3.5-turbo-16k-0613",           # 设置模型
+                       )             # 连接配置好的数据库，系统会自动开启MySQL外部函数
+
+
+mategen_test.chat('请帮我介绍下什么是机器学习？')
+print(mategen_test.messages.history_messages)
+mategen_test.chat("请问你上次回答的问题是什么？")
